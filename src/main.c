@@ -107,23 +107,27 @@ void display(gamecore_t *gc, player_t *player)
 
 static void check_key(gamecore_t *gc, player_t *player, sfEvent event)
 {
-    if (event.key.code == sfKeyUp) {
-        player->x -= sinf(player->cam_x * (M_PI / 180.0)) * move_speed;
+    if (event.key.code == sfKeyA)
+        player->cam_x -= 0.5;
+    if (event.key.code == sfKeyE)
+        player->cam_x += 0.5;
+    if (event.key.code == sfKeyZ) {
+        player->x += sinf(player->cam_x * (M_PI / 180.0)) * move_speed;
         player->y -= cosf(player->cam_x * (M_PI / 180.0)) * move_speed;
     }
-    if (event.key.code == sfKeyDown) {
-        player->x += sinf(player->cam_x * (M_PI / 180.0)) * move_speed;
+    if (event.key.code == sfKeyS) {
+        player->x -= sinf(player->cam_x * (M_PI / 180.0)) * move_speed;
         player->y += cosf(player->cam_x * (M_PI / 180.0)) * move_speed;
     }
-    if (event.key.code == sfKeyLeft) {
+    if (event.key.code == sfKeyQ) {
         player->x -= sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
-        player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
-    }
-    if (event.key.code == sfKeyRight) {
-        player->x += sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
         player->y += cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
     }
-    printf("%f et %f\n", player->x, player->y, player);
+    if (event.key.code == sfKeyD) {
+        player->x += sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
+        player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
+    }
+    printf("%f et %f et %f\n", player->x, player->y, player->cam_x);
 }
 
 void analyze_event(gamecore_t *gc, player_t *player, sfEvent event)
