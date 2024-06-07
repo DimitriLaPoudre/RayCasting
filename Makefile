@@ -18,6 +18,11 @@ all: $(NAME)
 $(NAME): $(OBJ)
 	gcc -o $(NAME) $(OBJ) $(CFLAGS)
 
+run: 
+	@make -s $(NAME)
+	@./$(NAME)
+	@make -s fclean
+
 clean:
 	rm -rf $(OBJ)
 
