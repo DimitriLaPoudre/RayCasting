@@ -111,9 +111,10 @@ void display(gamecore_t *gc, player_t *player)
     sfRectangleShape_setFillColor(gc->rect, sfGreen);
     sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, -player->cam_y * (gc->window_size.y / (float)90) + gc->window_size.y / (float)2});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
-    for (float i = 0; i < gc->fov; i += gc->fov / gc->window_size.x)
+    for (float i = 0; i < gc->fov; i += gc->fov / gc->window_size.x) {
         display_ray((float [2]){fmod(player->cam_x - gc->fov / 2 + i + 360, 360), player->cam_y},
-        i * (gc->window_size.x / gc->fov), player, gc);
+        roundf(i * (gc->window_size.x / gc->fov)), player, gc);
+    }
     sfRenderWindow_display(gc->window);
 }
 
