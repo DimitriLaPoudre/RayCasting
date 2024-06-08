@@ -35,6 +35,7 @@ static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc
     float dist = sqrt(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2));
     int type = 0;
 
+    cosf(fabs(fmod(player->cam_x - gc->fov / 2 + ray / (gc->window_size.x / gc->fov) + 360, 360) - player->cam_x)) * dist;
     // if (ray > 0) {
     //     type = (sqrt(powf(floorf(point[0]) - floorf(player->x), 2) + powf(point[1] - floorf(player->y), 2)))
     // } else {
@@ -42,7 +43,7 @@ static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc
     // }
     ray = fabs(ray) - 1;
     sfRectangleShape_setSize(gc->rect, (sfVector2f){1, gc->window_size.y / dist});
-    sfRectangleShape_setPosition(gc->rect, (sfVector2f){ray, (gc->window_size.y - (gc->window_size.y / dist)) / 2});
+    sfRectangleShape_setPosition(gc->rect, (sfVector2f){ray, player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / 2});
     sfRectangleShape_setFillColor(gc->rect, sfRed);
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
 }  
@@ -97,7 +98,7 @@ void display(gamecore_t *gc, player_t *player)
     sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, 0});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
     sfRectangleShape_setFillColor(gc->rect, sfGreen);
-    sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, gc->window_size.y / (float)2 + player->cam_y / gc->window_size.y});
+    sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, player->cam_y * (gc->window_size.y / (float)90) + gc->window_size.y / (float)2});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
     for (float i = 0; i < gc->fov; i += gc->fov / gc->window_size.x)
         display_ray((float [2]){fmod(player->cam_x - gc->fov / 2 + i + 360, 360), player->cam_y},
@@ -108,9 +109,13 @@ void display(gamecore_t *gc, player_t *player)
 static void check_key(gamecore_t *gc, player_t *player, sfEvent event)
 {
     if (event.key.code == sfKeyA)
-        player->cam_x -= 0.5;
+        player->cam_x = fmodf(player->cam_x - (float)1, 360);
     if (event.key.code == sfKeyE)
-        player->cam_x += 0.5;
+        player->cam_x = fmodf(player->cam_x + (float)1, 360);
+    if (event.key.code == sfKeyR && player->cam_y + (float)1 <= 90)
+        player->cam_y += (float)1;
+    if (event.key.code == sfKeyF && player->cam_y - (float)1 >= -90)
+        player->cam_y -= (float)1;
     if (event.key.code == sfKeyZ) {
         player->x += sinf(player->cam_x * (M_PI / 180.0)) * move_speed;
         player->y -= cosf(player->cam_x * (M_PI / 180.0)) * move_speed;
@@ -127,7 +132,8 @@ static void check_key(gamecore_t *gc, player_t *player, sfEvent event)
         player->x += sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
         player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
     }
-    printf("%f et %f et %f\n", player->x, player->y, player->cam_x);
+    for (; player->cam_x < 0; player->cam_x += 360);
+    printf("%f et %f et %f et %f\n", player->x, player->y, player->cam_x, player->cam_y);
 }
 
 void analyze_event(gamecore_t *gc, player_t *player, sfEvent event)
