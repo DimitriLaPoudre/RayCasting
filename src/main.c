@@ -10,9 +10,14 @@
 #include <string.h>
 #include <math.h>
 #include <SFML/Graphics.h>
-#include <SFML/Window.h>
+#include <SFML/System.h>
 
-#define move_speed 0.5
+#define move_speed (float)2.5
+#define mouse_sensibility (sfVector2f){(float)3 / (float)10, (float)3 / (float)10}
+#define key_up sfKeyZ
+#define key_down sfKeyS
+#define key_left sfKeyQ
+#define key_right sfKeyD
 
 typedef struct player_s {
     float x;
@@ -27,7 +32,13 @@ typedef struct gamecore_s {
     sfEvent event;
     float fov;
     char **map;
+    sfVector2u map_size;
+    sfVector2i mouse_pos;
+    sfVector2i diff_mouse_pos;
     sfRectangleShape *rect;
+    sfClock *clock;
+    float delay;
+    char key[sfKeyCount];
 } gamecore_t;
 
 static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc)
@@ -35,7 +46,7 @@ static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc
     float dist = sqrt(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2));
     int type = 0;
 
-    cosf(fabs(fmod(player->cam_x - gc->fov / 2 + ray / (gc->window_size.x / gc->fov) + 360, 360) - player->cam_x)) * dist;
+    dist *= cosf(fabs(player->cam_x - gc->fov / (float)2 + (fabs(ray) / (gc->window_size.x / gc->fov)) - player->cam_x) * (M_PI / 180.0));
     // if (ray > 0) {
     //     type = (sqrt(powf(floorf(point[0]) - floorf(player->x), 2) + powf(point[1] - floorf(player->y), 2)))
     // } else {
@@ -43,7 +54,7 @@ static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc
     // }
     ray = fabs(ray) - 1;
     sfRectangleShape_setSize(gc->rect, (sfVector2f){1, gc->window_size.y / dist});
-    sfRectangleShape_setPosition(gc->rect, (sfVector2f){ray, player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / 2});
+    sfRectangleShape_setPosition(gc->rect, (sfVector2f){ray, -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2});
     sfRectangleShape_setFillColor(gc->rect, sfRed);
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
 }  
@@ -93,12 +104,12 @@ void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
 void display(gamecore_t *gc, player_t *player)
 {
     sfRenderWindow_clear(gc->window, sfBlack);
-    sfRectangleShape_setSize(gc->rect, (sfVector2f){gc->window_size.x, gc->window_size.y});
+    sfRectangleShape_setSize(gc->rect, (sfVector2f){gc->window_size.x, gc->window_size.y * 2});
     sfRectangleShape_setFillColor(gc->rect, sfBlue);
     sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, 0});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
     sfRectangleShape_setFillColor(gc->rect, sfGreen);
-    sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, player->cam_y * (gc->window_size.y / (float)90) + gc->window_size.y / (float)2});
+    sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, -player->cam_y * (gc->window_size.y / (float)90) + gc->window_size.y / (float)2});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
     for (float i = 0; i < gc->fov; i += gc->fov / gc->window_size.x)
         display_ray((float [2]){fmod(player->cam_x - gc->fov / 2 + i + 360, 360), player->cam_y},
@@ -106,65 +117,96 @@ void display(gamecore_t *gc, player_t *player)
     sfRenderWindow_display(gc->window);
 }
 
-static void check_key(gamecore_t *gc, player_t *player, sfEvent event)
+static void check_key(gamecore_t *gc, player_t *player)
 {
-    if (event.key.code == sfKeyA)
-        player->cam_x = fmodf(player->cam_x - (float)1, 360);
-    if (event.key.code == sfKeyE)
-        player->cam_x = fmodf(player->cam_x + (float)1, 360);
-    if (event.key.code == sfKeyR && player->cam_y + (float)1 <= 90)
-        player->cam_y += (float)1;
-    if (event.key.code == sfKeyF && player->cam_y - (float)1 >= -90)
-        player->cam_y -= (float)1;
-    if (event.key.code == sfKeyZ) {
-        player->x += sinf(player->cam_x * (M_PI / 180.0)) * move_speed;
-        player->y -= cosf(player->cam_x * (M_PI / 180.0)) * move_speed;
+    if (gc->key[sfKeyZ]) {
+        player->x += sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
+        player->y -= cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
+        if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
+            player->x -= sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
+            player->y += cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
+        }
     }
-    if (event.key.code == sfKeyS) {
-        player->x -= sinf(player->cam_x * (M_PI / 180.0)) * move_speed;
-        player->y += cosf(player->cam_x * (M_PI / 180.0)) * move_speed;
+    if (gc->key[sfKeyS]) {
+        player->x -= sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
+        player->y += cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
+        if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
+            player->x += sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
+            player->y -= cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
+        }
     }
-    if (event.key.code == sfKeyQ) {
-        player->x -= sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
-        player->y += cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
+    if (gc->key[sfKeyQ]) {
+        player->x -= sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
+        player->y += cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
+        if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
+            player->x += sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
+            player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
+        }
     }
-    if (event.key.code == sfKeyD) {
-        player->x += sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
-        player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed;
+    if (gc->key[sfKeyD]) {
+        player->x += sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
+        player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
+        if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
+            player->x -= sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
+            player->y += cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
+        }
     }
-    for (; player->cam_x < 0; player->cam_x += 360);
-    printf("%f et %f et %f et %f\n", player->x, player->y, player->cam_x, player->cam_y);
 }
 
-void analyze_event(gamecore_t *gc, player_t *player, sfEvent event)
+static void check_cam(gamecore_t *gc, player_t *player)
 {
-    switch (event.type) {
-        case sfEvtClosed:
-            sfRenderWindow_close(gc->window);
-            break;
-        case sfEvtKeyPressed:
-            check_key(gc, player, event);
-            break;
-    }
+    player->cam_x = fmodf(player->cam_x + gc->diff_mouse_pos.x * mouse_sensibility.x, 360);
+    for (; player->cam_x < 0; player->cam_x += 360);
+    player->cam_y += gc->diff_mouse_pos.y * mouse_sensibility.y;
+    if (player->cam_y > 90 || player->cam_y < -90)
+        player->cam_y = (player->cam_y > 90) ? 90 : -90;
+    gc->diff_mouse_pos = (sfVector2i){0, 0};
+    gc->mouse_pos = (sfVector2i){gc->window_size.x / 2, gc->window_size.y / 2};
+    sfMouse_setPositionRenderWindow(gc->mouse_pos, gc->window);
+}
+
+void analyze_event(gamecore_t *gc, player_t *player)
+{
+    while(sfRenderWindow_pollEvent(gc->window, &gc->event))
+        switch (gc->event.type) {
+            case sfEvtClosed:
+                sfRenderWindow_close(gc->window);
+                break;
+            case sfEvtKeyPressed:
+                gc->key[gc->event.key.code] = 1;
+                break;
+            case sfEvtKeyReleased:
+                gc->key[gc->event.key.code] = 0;
+                break;
+            case sfEvtMouseMoved:
+                gc->diff_mouse_pos.x += gc->event.mouseMove.x - gc->mouse_pos.x;
+                gc->diff_mouse_pos.y += gc->event.mouseMove.y - gc->mouse_pos.y;
+                gc->mouse_pos = (sfVector2i){gc->event.mouseMove.x, gc->event.mouseMove.y};
+        }
+    check_key(gc, player);
+    check_cam(gc, player);
 }
 
 int main(void)
 {
     player_t player = {2.3, 6.78, 0, 0};
     gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose, NULL),
-    (sfVector2f){800, 600}, 0, 90, NULL, sfRectangleShape_create()};
+    {800, 600}, 0, 90, NULL, {10, 10}, {0}, {0}, sfRectangleShape_create(), sfClock_create()};
 
-    gc.map = calloc(sizeof(char *), 10 + 1);
+    gc.map = calloc(sizeof(char *), gc.map_size.y + 1);
     for (int i = 0; i < 10; i++) {
-        gc.map[i] = calloc(sizeof(char), (10 + 1));
+        gc.map[i] = calloc(sizeof(char), gc.map_size.x + 1);
         gc.map[i][0] = 1;
-        gc.map[i][10 - 1] = 1;
-        if (i == 0 || i == 10 - 1)
-            memset(gc.map[i] + 1, 1, 10 - 2);
+        gc.map[i][gc.map_size.x - 1] = 1;
+        if (i == 0 || i == gc.map_size.y - 1)
+            memset(gc.map[i] + 1, 1, gc.map_size.x - 2);
     }
+    gc.map[4][4] = 1;
+    sfRenderWindow_setMouseCursorVisible(gc.window, sfFalse);
+    gc.mouse_pos = sfMouse_getPositionRenderWindow(gc.window);
     while (sfRenderWindow_isOpen(gc.window)) {
-        while(sfRenderWindow_pollEvent(gc.window, &gc.event))
-            analyze_event(&gc, &player, gc.event);
+        gc.delay = sfClock_restart(gc.clock).microseconds / 1000000.0;
+        analyze_event(&gc, &player);
         display(&gc, &player);
     }
     return 0;
