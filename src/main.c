@@ -14,10 +14,7 @@
 
 #define move_speed (float)2.5
 #define mouse_sensibility (sfVector2f){(float)3 / (float)10, (float)3 / (float)10}
-#define key_up sfKeyZ
-#define key_down sfKeyS
-#define key_left sfKeyQ
-#define key_right sfKeyD
+#define in_map(px, py, gc) (px >= 0 && px < gc->map_size.x && py >= 0 && py < gc->map_size.y)
 
 typedef struct player_s {
     float x;
@@ -39,27 +36,40 @@ typedef struct gamecore_s {
     sfClock *clock;
     float delay;
     char key[sfKeyCount];
+    sfColor type[3];
 } gamecore_t;
 
 static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc)
 {
-    float dist = sqrt(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2));
+    float dist = sqrtf(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2));
     int type = 0;
 
-    dist *= cosf(fabs(player->cam_x - gc->fov / (float)2 + (fabs(ray) / (gc->window_size.x / gc->fov)) - player->cam_x) * (M_PI / 180.0));
-    // if (ray > 0) {
-    //     type = (sqrt(powf(floorf(point[0]) - floorf(player->x), 2) + powf(point[1] - floorf(player->y), 2)))
-    // } else {
-
-    // }
-    ray = fabs(ray) - 1;
+    dist *= cosf(fabsf(player->cam_x - gc->fov / (float)2 + (fabsf(ray) / (gc->window_size.x / gc->fov)) - player->cam_x) * (M_PI / 180.0));
+    if (ray > 0) {
+        if ((in_map((int)floorf(point[0] - 1), (int)point[1], gc) && gc->map[(int)floorf(point[1])][(int)point[0] - 1])
+        && (in_map((int)floorf(point[0]), (int)point[1], gc) && gc->map[(int)floorf(point[1])][(int)point[0]]))
+            type = (sqrtf(powf((int)floorf(point[1]), 2) + powf((int)point[0] - 1, 2)) < sqrtf(powf((int)floorf(point[1]), 2) + powf((int)point[0], 2)))
+            ? gc->map[(int)floorf(point[1])][(int)point[0] - 1] :  gc->map[(int)floorf(point[1])][(int)point[0]];
+        else
+            type = (in_map((int)floorf(point[0] - 1), (int)point[1], gc) && gc->map[(int)floorf(point[1])][(int)point[0] - 1])
+            ? gc->map[(int)floorf(point[1])][(int)point[0] - 1] :  gc->map[(int)floorf(point[1])][(int)point[0]];
+    } else {
+        if ((in_map((int)floorf(point[0]), (int)point[1] - 1, gc) && gc->map[(int)point[1] - 1][(int)floorf(point[0])])
+        && (in_map((int)floorf(point[0]), (int)point[1], gc) && gc->map[(int)point[1]][(int)floorf(point[0])]))
+            type = (sqrtf(powf((int)floorf(point[0]), 2) + powf((int)point[1] - 1, 2)) < sqrtf(powf((int)floorf(point[0]), 2) + powf((int)point[1], 2)))
+            ? gc->map[(int)point[1] - 1][(int)floorf(point[0])] :  gc->map[(int)point[1]][(int)floorf(point[0])];
+        else
+            type = (in_map((int)floorf(point[0]), (int)point[1] - 1, gc) && gc->map[(int)point[1] - 1][(int)floorf(point[0])])
+            ? gc->map[(int)point[1] - 1][(int)floorf(point[0])] :  gc->map[(int)point[1]][(int)floorf(point[0])];
+    }
+    ray = fabsf(ray) - 1;
     sfRectangleShape_setSize(gc->rect, (sfVector2f){1, gc->window_size.y / dist});
     sfRectangleShape_setPosition(gc->rect, (sfVector2f){ray, -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2});
-    sfRectangleShape_setFillColor(gc->rect, sfRed);
+    sfRectangleShape_setFillColor(gc->rect, gc->type[type - 1]);
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
-}  
+}
 
-void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
+static void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
 {
     float side_x[2] = {(float)((cam[0] >= 180) ? -1 : 1), 0};
     float side_y[2] = {0, (float)((cam[0] < 90 || cam[0] >= 270) ? -1 : 1)};
@@ -67,31 +77,31 @@ void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
     float point_y[2] = {0};
     
     point_x[0] = (cam[0] >= 180) ? floorf(player->x) : floorf(player->x) + 1;
-    point_x[1] = tanf((cam[0] >= 180) ? fabs(cam[0] - 270) * (M_PI / 180.0)
-    : fabs(cam[0] - 90) * (M_PI / 180.0)) * fabs(point_x[0] - player->x)
+    point_x[1] = tanf((cam[0] >= 180) ? fabsf(cam[0] - 270) * (M_PI / 180.0)
+    : fabsf(cam[0] - 90) * (M_PI / 180.0)) * fabsf(point_x[0] - player->x)
     * (float)((cam[0] < 90 || cam[0] >= 270) ? -1 : 1) + player->y;
     point_y[1] = (cam[0] < 90 || cam[0] >= 270) ? floorf(player->y) : floorf(player->y) + 1;
-    point_y[0] = fabs(point_y[1] - player->y) / tanf((cam[0] >= 180)
-    ? fabs(cam[0] - 270) * (M_PI / 180.0)
-    : fabs(cam[0] - 90) * (M_PI / 180.0)) * (float)((cam[0] >= 180) ? -1 : 1) + player->x;
-    side_x[1] = tanf((cam[0] >= 180) ? fabs(cam[0] - 270) * (M_PI / 180.0)
-    : fabs(cam[0] - 90) * (M_PI / 180.0))
+    point_y[0] = fabsf(point_y[1] - player->y) / tanf((cam[0] >= 180)
+    ? fabsf(cam[0] - 270) * (M_PI / 180.0)
+    : fabsf(cam[0] - 90) * (M_PI / 180.0)) * (float)((cam[0] >= 180) ? -1 : 1) + player->x;
+    side_x[1] = tanf((cam[0] >= 180) ? fabsf(cam[0] - 270) * (M_PI / 180.0)
+    : fabsf(cam[0] - 90) * (M_PI / 180.0))
     * (float)((cam[0] < 90 || cam[0] >= 270) ? -1 : 1);
     side_y[0] = (float)((cam[0] >= 180) ? -1 : 1) / tanf((cam[0] >= 180)
-    ? fabs(cam[0] - 270) * (M_PI / 180.0) : fabs(cam[0] - 90) * (M_PI / 180.0));
+    ? fabsf(cam[0] - 270) * (M_PI / 180.0) : fabsf(cam[0] - 90) * (M_PI / 180.0));
     while (1) {
-        if (sqrt(powf(point_x[0] - player->x, 2) + powf(point_x[1] - player->y, 2))
-        < sqrt(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
-            if ((gc->map[(int)floorf(point_x[1])][(int)point_x[0] - 1] == 1)
-            || gc->map[(int)floorf(point_x[1])][(int)point_x[0]] == 1) {
+        if (sqrtf(powf(point_x[0] - player->x, 2) + powf(point_x[1] - player->y, 2))
+        < sqrtf(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
+            if ((in_map((int)floorf(point_x[0] - 1), (int)point_x[1], gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0] - 1])
+            || (in_map((int)floorf(point_x[0]), (int)point_x[1], gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0]])) {
                 place_wall(point_x, ray + 1, player, gc);
                 break;
             }
             point_x[0] += side_x[0];
             point_x[1] += side_x[1];
         } else {
-            if (gc->map[(int)point_y[1] - 1][(int)floorf(point_y[0])] == 1
-            || gc->map[(int)point_y[1]][(int)floorf(point_y[0])] == 1) {
+            if ((in_map((int)floorf(point_y[0]), (int)point_y[1] - 1, gc) && gc->map[(int)point_y[1] - 1][(int)floorf(point_y[0])])
+            || (in_map((int)floorf(point_y[0]), (int)point_y[1], gc) && gc->map[(int)point_y[1]][(int)floorf(point_y[0])])) {
                 place_wall(point_y, -(ray + 1), player, gc);
                 break;
             }
@@ -105,7 +115,7 @@ void display(gamecore_t *gc, player_t *player)
 {
     sfRenderWindow_clear(gc->window, sfBlack);
     sfRectangleShape_setSize(gc->rect, (sfVector2f){gc->window_size.x, gc->window_size.y * 2});
-    sfRectangleShape_setFillColor(gc->rect, sfBlue);
+    sfRectangleShape_setFillColor(gc->rect, (sfColor){0, 200, 240, 255});
     sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, 0});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
     sfRectangleShape_setFillColor(gc->rect, sfGreen);
@@ -120,7 +130,7 @@ void display(gamecore_t *gc, player_t *player)
 
 static void check_key(gamecore_t *gc, player_t *player)
 {
-    if (gc->key[sfKeyZ]) {
+    if (gc->key[sfKeyZ] || gc->key[sfKeyUp]) {
         player->x += sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         player->y -= cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
@@ -128,7 +138,7 @@ static void check_key(gamecore_t *gc, player_t *player)
             player->y += cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         }
     }
-    if (gc->key[sfKeyS]) {
+    if (gc->key[sfKeyS] || gc->key[sfKeyDown]) {
         player->x -= sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         player->y += cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
@@ -136,7 +146,7 @@ static void check_key(gamecore_t *gc, player_t *player)
             player->y -= cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         }
     }
-    if (gc->key[sfKeyQ]) {
+    if (gc->key[sfKeyQ] || gc->key[sfKeyLeft]) {
         player->x -= sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
         player->y += cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
         if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
@@ -144,7 +154,7 @@ static void check_key(gamecore_t *gc, player_t *player)
             player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
         }
     }
-    if (gc->key[sfKeyD]) {
+    if (gc->key[sfKeyD] || gc->key[sfKeyRight]) {
         player->x += sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
         player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
         if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
@@ -192,7 +202,7 @@ int main(void)
 {
     player_t player = {2.3, 6.78, 0, 0};
     gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose, NULL),
-    {800, 600}, 0, 90, NULL, {10, 10}, {0}, {0}, sfRectangleShape_create(), sfClock_create()};
+    {800, 600}, 0, 90, NULL, {10, 10}, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0}, {sfRed, sfBlue, sfGreen}};
 
     gc.map = calloc(sizeof(char *), gc.map_size.y + 1);
     for (int i = 0; i < 10; i++) {
@@ -202,7 +212,8 @@ int main(void)
         if (i == 0 || i == gc.map_size.y - 1)
             memset(gc.map[i] + 1, 1, gc.map_size.x - 2);
     }
-    gc.map[4][4] = 1;
+    gc.map[4][4] = 2;
+    gc.map[5][0] = 3;
     sfRenderWindow_setMouseCursorVisible(gc.window, sfFalse);
     gc.mouse_pos = sfMouse_getPositionRenderWindow(gc.window);
     while (sfRenderWindow_isOpen(gc.window)) {
