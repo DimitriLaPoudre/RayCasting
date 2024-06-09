@@ -8,6 +8,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <math.h>
 #include <SFML/Graphics.h>
 #include <SFML/System.h>
@@ -198,22 +202,12 @@ void analyze_event(gamecore_t *gc, player_t *player)
     check_cam(gc, player);
 }
 
-int main(void)
+int gameloop(char **map, sfVector2u map_size)
 {
     player_t player = {2.3, 6.78, 0, 0};
     gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose, NULL),
-    {800, 600}, 0, 90, NULL, {10, 10}, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0}, {sfRed, sfBlue, sfGreen}};
+    {800, 600}, 0, 90, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0}, {sfRed, sfBlue, sfGreen}};
 
-    gc.map = calloc(sizeof(char *), gc.map_size.y + 1);
-    for (int i = 0; i < 10; i++) {
-        gc.map[i] = calloc(sizeof(char), gc.map_size.x + 1);
-        gc.map[i][0] = 1;
-        gc.map[i][gc.map_size.x - 1] = 1;
-        if (i == 0 || i == gc.map_size.y - 1)
-            memset(gc.map[i] + 1, 1, gc.map_size.x - 2);
-    }
-    gc.map[4][4] = 2;
-    gc.map[5][0] = 3;
     sfRenderWindow_setMouseCursorVisible(gc.window, sfFalse);
     gc.mouse_pos = sfMouse_getPositionRenderWindow(gc.window);
     while (sfRenderWindow_isOpen(gc.window)) {
@@ -222,4 +216,69 @@ int main(void)
         display(&gc, &player);
     }
     return 0;
+}
+
+static char **get_map(int fd, char *path, sfVector2u *map_size)
+{
+    struct stat info;
+    char **map = NULL;
+    char *data = NULL;
+    char *line = NULL;
+    char *token = NULL;
+    int offset = 0;
+    int len = 0;
+
+    (*map_size).x = 0;
+    (*map_size).y = 1;
+    stat(path, &info);
+    if (info.st_size == 0)
+        return NULL;
+    data = calloc(sizeof(char), info.st_size + 1);
+    read(fd, data, info.st_size);
+    for (int i = 0; data[i]; i++)
+        if (data[i] == '\n') {
+            (*map_size).y++;
+            data[i] = '\0';
+        }
+    map = malloc(sizeof(char *) * (*map_size).y);
+    for (int i = 0; i < (*map_size).y; i++) {
+        len = 0;
+        line = strdup(data + offset);
+        token = strtok(line, "-");
+        for (; token != NULL; token = strtok(NULL, "-"))
+            len++;
+        free(line);
+        if ((*map_size).x == 0)
+            (*map_size).x = len;
+        if (len != (*map_size).x)
+            return NULL;
+        map[i] = malloc(sizeof(char) * len);
+        line = strdup(data + offset);
+        offset += strlen(line) + 1; 
+        token = strtok(line, "-");
+        for (int j = 0; token != NULL; j++) {
+            map[i][j] = atoi(token);
+            token = strtok(NULL, "-");
+        }
+        free(line);
+    }
+    return map;
+}
+
+int main(int ac, char **av)
+{
+    int fd = 0;
+    char **map = NULL;
+    sfVector2u map_size = {0};
+
+    if (ac != 2)
+        return 84;
+    fd = open(av[1], O_RDONLY);
+    if (fd == -1)
+        return 84;
+    map = get_map(fd, av[1], &map_size);
+    if (map)
+        gameloop(map, map_size);
+    else
+        return 84;
 }
