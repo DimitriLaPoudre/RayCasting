@@ -122,7 +122,7 @@ void display(gamecore_t *gc, player_t *player)
     sfRectangleShape_setFillColor(gc->rect, (sfColor){0, 200, 240, 255});
     sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, 0});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
-    sfRectangleShape_setFillColor(gc->rect, sfGreen);
+    sfRectangleShape_setFillColor(gc->rect, (sfColor){150, 150, 150, 255});
     sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, -player->cam_y * (gc->window_size.y / (float)90) + gc->window_size.y / (float)2});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
     for (float i = 0; i < gc->fov; i += gc->fov / gc->window_size.x) {
@@ -204,7 +204,7 @@ void analyze_event(gamecore_t *gc, player_t *player)
 
 int gameloop(char **map, sfVector2u map_size)
 {
-    player_t player = {2.3, 6.78, 0, 0};
+    player_t player = {1.2, 1.2, 180, 0};
     gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose, NULL),
     {800, 600}, 0, 90, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0}, {sfRed, sfBlue, sfGreen}};
 
