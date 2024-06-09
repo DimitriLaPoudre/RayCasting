@@ -94,10 +94,13 @@ static void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
     side_y[0] = (float)((cam[0] >= 180) ? -1 : 1) / tanf((cam[0] >= 180)
     ? fabsf(cam[0] - 270) * (M_PI / 180.0) : fabsf(cam[0] - 90) * (M_PI / 180.0));
     while (1) {
+        if (!in_map((int)floorf(point_x[0] - 1), (int)point_x[1], gc) && !in_map((int)floorf(point_x[0]), (int)point_x[1], gc)
+        && !in_map((int)floorf(point_y[0]), (int)point_y[1] - 1, gc) && !in_map((int)floorf(point_y[0]), (int)point_y[1], gc))
+            break;
         if (sqrtf(powf(point_x[0] - player->x, 2) + powf(point_x[1] - player->y, 2))
         < sqrtf(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
-            if ((in_map((int)floorf(point_x[0] - 1), (int)point_x[1], gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0] - 1])
-            || (in_map((int)floorf(point_x[0]), (int)point_x[1], gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0]])) {
+            if ((in_map((int)(point_x[0] - 1), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0] - 1])
+            || (in_map((int)(point_x[0]), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0]])) {
                 place_wall(point_x, ray + 1, player, gc);
                 break;
             }
@@ -137,7 +140,7 @@ static void check_key(gamecore_t *gc, player_t *player)
     if (gc->key[sfKeyZ] || gc->key[sfKeyUp]) {
         player->x += sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         player->y -= cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
-        if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
+        if (!in_map((int)floorf(player->x), (int)floorf(player->y), gc) || gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
             player->x -= sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
             player->y += cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         }
@@ -145,7 +148,7 @@ static void check_key(gamecore_t *gc, player_t *player)
     if (gc->key[sfKeyS] || gc->key[sfKeyDown]) {
         player->x -= sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         player->y += cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
-        if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
+        if (!in_map((int)floorf(player->x), (int)floorf(player->y), gc) || gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
             player->x += sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
             player->y -= cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
         }
@@ -153,7 +156,7 @@ static void check_key(gamecore_t *gc, player_t *player)
     if (gc->key[sfKeyQ] || gc->key[sfKeyLeft]) {
         player->x -= sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
         player->y += cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
-        if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
+        if (!in_map((int)floorf(player->x), (int)floorf(player->y), gc) || gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
             player->x += sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
             player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
         }
@@ -161,11 +164,12 @@ static void check_key(gamecore_t *gc, player_t *player)
     if (gc->key[sfKeyD] || gc->key[sfKeyRight]) {
         player->x += sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
         player->y -= cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
-        if (gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
+        if (!in_map((int)floorf(player->x), (int)floorf(player->y), gc) || gc->map[(int)floorf(player->y)][(int)floorf(player->x)] != 0) {
             player->x -= sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
             player->y += cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
         }
     }
+    printf("%f et %f et %f\n", player->x, player->y, player->cam_x);
 }
 
 static void check_cam(gamecore_t *gc, player_t *player)
