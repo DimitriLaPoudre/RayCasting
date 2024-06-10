@@ -27,12 +27,17 @@ typedef struct player_s {
     float cam_y;
 } player_t;
 
+typedef struct {
+    sfTexture *texture;
+    sfSprite *sprite;
+} sprite_t;
+
 typedef struct gamecore_s {
     sfRenderWindow *window;
     sfVector2f window_size;
     sfEvent event;
     float fov;
-    char **map;
+    short **map;
     sfVector2u map_size;
     sfVector2i mouse_pos;
     sfVector2i diff_mouse_pos;
@@ -40,13 +45,14 @@ typedef struct gamecore_s {
     sfClock *clock;
     float delay;
     char key[sfKeyCount];
-    sfColor type[3];
+    sfColor type[6];
+    sprite_t wall;
 } gamecore_t;
 
 static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc)
 {
     float dist = sqrtf(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2));
-    int type = 0;
+    short type = 0;
 
     dist *= cosf(fabsf(player->cam_x - gc->fov / (float)2 + (fabsf(ray) / (gc->window_size.x / gc->fov)) - player->cam_x) * (M_PI / 180.0));
     if (ray > 0) {
@@ -66,11 +72,12 @@ static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc
             type = (in_map((int)floorf(point[0]), (int)point[1] - 1, gc) && gc->map[(int)point[1] - 1][(int)floorf(point[0])])
             ? gc->map[(int)point[1] - 1][(int)floorf(point[0])] :  gc->map[(int)point[1]][(int)floorf(point[0])];
     }
+    type = (ray > 0) ? type >> 8 & 0xFF : type & 0xFF;
+    sfSprite_setTextureRect(gc->wall.sprite, (sfIntRect){(float)((type - 1) % 6) * (float)64 + (float)64 * ((ray > 0) ? point[1] - floorf(point[1]) : point[0] - floorf(point[0])), ((type - 1) / 6) * 64, 1, 64});
     ray = fabsf(ray) - 1;
-    sfRectangleShape_setSize(gc->rect, (sfVector2f){1, gc->window_size.y / dist});
-    sfRectangleShape_setPosition(gc->rect, (sfVector2f){ray, -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2});
-    sfRectangleShape_setFillColor(gc->rect, gc->type[type - 1]);
-    sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
+    sfSprite_setScale(gc->wall.sprite, (sfVector2f){1, (gc->window_size.y / dist) / (float)64});
+    sfSprite_setPosition(gc->wall.sprite, (sfVector2f){ray, -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2});
+    sfRenderWindow_drawSprite(gc->window, gc->wall.sprite, NULL);
 }
 
 static void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
@@ -141,7 +148,9 @@ static void check_key(gamecore_t *gc, player_t *player)
     float sin_v = sinf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
     float cos_h = cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
     float cos_v = cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
- 
+    
+    if (gc->key[sfKeyEscape])
+        sfRenderWindow_close(gc->window);
     if (gc->key[sfKeyZ] || gc->key[sfKeyUp]) {
         player->x += sin_h;
         player->y -= cos_h;
@@ -211,12 +220,15 @@ void analyze_event(gamecore_t *gc, player_t *player)
     check_cam(gc, player);
 }
 
-int gameloop(char **map, sfVector2u map_size)
+int gameloop(short **map, sfVector2u map_size)
 {
     player_t player = {1.2, 1.2, 180, 0};
     gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose, NULL),
-    {800, 600}, 0, 90, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0}, {sfRed, sfBlue, sfGreen}};
+    {800, 600}, 0, 90, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0},
+    {sfRed, (sfColor){200, 0, 0, 255}, sfBlue,  (sfColor){0, 0, 200, 255}, sfGreen,  (sfColor){0, 200, 0, 255}},
+    {sfTexture_createFromFile("asset/wall.png", NULL), sfSprite_create()}};
 
+    sfSprite_setTexture(gc.wall.sprite, gc.wall.texture, sfTrue);
     sfRenderWindow_setMouseCursorVisible(gc.window, sfFalse);
     gc.mouse_pos = sfMouse_getPositionRenderWindow(gc.window);
     while (sfRenderWindow_isOpen(gc.window)) {
@@ -227,10 +239,10 @@ int gameloop(char **map, sfVector2u map_size)
     return 0;
 }
 
-static char **get_map(int fd, char *path, sfVector2u *map_size)
+static short **get_map(int fd, char *path, sfVector2u *map_size)
 {
     struct stat info;
-    char **map = NULL;
+    short **map = NULL;
     char *data = NULL;
     char *line = NULL;
     char *token = NULL;
@@ -249,7 +261,7 @@ static char **get_map(int fd, char *path, sfVector2u *map_size)
             (*map_size).y++;
             data[i] = '\0';
         }
-    map = malloc(sizeof(char *) * (*map_size).y);
+    map = malloc(sizeof(short *) * (*map_size).y);
     for (int i = 0; i < (*map_size).y; i++) {
         len = 0;
         line = strdup(data + offset);
@@ -261,7 +273,7 @@ static char **get_map(int fd, char *path, sfVector2u *map_size)
             (*map_size).x = len;
         if (len != (*map_size).x)
             return NULL;
-        map[i] = malloc(sizeof(char) * len);
+        map[i] = malloc(sizeof(short) * len);
         line = strdup(data + offset);
         offset += strlen(line) + 1; 
         token = strtok(line, "-");
@@ -277,7 +289,7 @@ static char **get_map(int fd, char *path, sfVector2u *map_size)
 int main(int ac, char **av)
 {
     int fd = 0;
-    char **map = NULL;
+    short **map = NULL;
     sfVector2u map_size = {0};
 
     if (ac != 2)
