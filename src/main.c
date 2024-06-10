@@ -129,10 +129,10 @@ void display(gamecore_t *gc, player_t *player)
 {
     sfRenderWindow_clear(gc->window, sfBlack);
     sfRectangleShape_setSize(gc->rect, (sfVector2f){gc->window_size.x, gc->window_size.y * 2});
-    sfRectangleShape_setFillColor(gc->rect, (sfColor){0, 200, 240, 255});
+    sfRectangleShape_setFillColor(gc->rect, (sfColor){50, 50, 50, 255});
     sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, 0});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
-    sfRectangleShape_setFillColor(gc->rect, (sfColor){150, 150, 150, 255});
+    sfRectangleShape_setFillColor(gc->rect, (sfColor){100, 100, 100, 255});
     sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, -player->cam_y * (gc->window_size.y / (float)90) + gc->window_size.y / (float)2});
     sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
     for (float i = 0; i < gc->fov; i += gc->fov / gc->window_size.x) {
@@ -224,10 +224,13 @@ int gameloop(short **map, sfVector2u map_size)
 {
     player_t player = {1.2, 1.2, 180, 0};
     gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose, NULL),
-    {800, 600}, 0, 90, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0},
+    {800, 600}, 0, 60, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0},
     {sfRed, (sfColor){200, 0, 0, 255}, sfBlue,  (sfColor){0, 0, 200, 255}, sfGreen,  (sfColor){0, 200, 0, 255}},
     {sfTexture_createFromFile("asset/wall.png", NULL), sfSprite_create()}};
 
+    sfRenderWindow_setPosition(gc.window,
+    (sfVector2i){(sfVideoMode_getDesktopMode().width - gc.window_size.x) / 2,
+    (sfVideoMode_getDesktopMode().height - 80 - gc.window_size.y) / 2});
     sfSprite_setTexture(gc.wall.sprite, gc.wall.texture, sfTrue);
     sfRenderWindow_setMouseCursorVisible(gc.window, sfFalse);
     gc.mouse_pos = sfMouse_getPositionRenderWindow(gc.window);

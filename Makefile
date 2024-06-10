@@ -11,7 +11,7 @@ SRC = src/main.c
 
 OBJ = $(SRC:.c=.o)
 
-CFLAGS = -lcsfml-graphics -lcsfml-system -lm
+CFLAGS = -lcsfml-graphics -lcsfml-window -lcsfml-system -lm
 
 all: $(NAME)
 
