@@ -37,11 +37,28 @@ void analyze_event(gamecore_t *gc, player_t *player)
     func[gc->state](gc, player);
 }
 
+void update(gamecore_t *gc, player_t *player)
+{
+    void (*func[SCENE_COUNT])(gamecore_t *, player_t *) = {&update_game, &update_pause};
+    static float task = 0;
+
+    task += gc->delay;
+    if (task >= 1 / gc->ups) {
+        func[gc->state](gc, player);
+        task = fmodf(task, gc->ups);
+    }
+}
+
 void display(gamecore_t *gc, player_t *player)
 {
     void (*func[SCENE_COUNT])(gamecore_t *, player_t *) = {&display_game, &display_pause};
+    static float task = 0;
 
-    func[gc->state](gc, player);
+    task += gc->delay;
+    if (task >= 1 / gc->fps) {
+        func[gc->state](gc, player);
+        task = fmodf(task, gc->fps);
+    }
 }
 
 int gameloop(short **map, sfVector2u map_size)
@@ -50,7 +67,7 @@ int gameloop(short **map, sfVector2u map_size)
     gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose | sfResize, NULL),
     {800, 600}, 0, 60, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0},
     {sfRed, (sfColor){200, 0, 0, 255}, sfBlue,  (sfColor){0, 0, 200, 255}, sfGreen,  (sfColor){0, 200, 0, 255}},
-    {sfTexture_createFromFile("asset/wall.png", NULL), sfSprite_create()}, GAME, 1};
+    {sfTexture_createFromFile("asset/wall.png", NULL), sfSprite_create()}, GAME, 1, 60, 60};
 
     sfRenderWindow_setPosition(gc.window,
     (sfVector2i){(sfVideoMode_getDesktopMode().width - gc.window_size.x) / 2,
@@ -61,6 +78,7 @@ int gameloop(short **map, sfVector2u map_size)
     while (sfRenderWindow_isOpen(gc.window)) {
         gc.delay = sfClock_restart(gc.clock).microseconds / 1000000.0;
         analyze_event(&gc, &player);
+        update(&gc, &player);
         display(&gc, &player);
     }
     return 0;

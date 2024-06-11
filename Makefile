@@ -9,8 +9,10 @@ NAME = Wolf3D
 
 SRC = src/main.c \
 	  src/game/analyze_event.c \
+	  src/game/update.c \
 	  src/game/display.c \
 	  src/pause/analyze_event.c \
+	  src/pause/update.c \
 	  src/pause/display.c \
 
 OBJ = $(SRC:.c=.o)

@@ -57,10 +57,15 @@ typedef struct gamecore_s {
     sprite_t wall;
     char state;
     char focus;
+    short fps;
+    short ups;
 } gamecore_t;
 
 void analyze_event_game(gamecore_t *gc, player_t *player);
 void analyze_event_pause(gamecore_t *gc, player_t *player);
+
+void update_game(gamecore_t *gc, player_t *player);
+void update_pause(gamecore_t *gc, player_t *player);
 
 void display_game(gamecore_t *gc, player_t *player);
 void display_pause(gamecore_t *gc, player_t *player);
