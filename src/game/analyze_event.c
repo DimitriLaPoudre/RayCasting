@@ -7,6 +7,57 @@
 
 #include "Wolf3D.h"
 
+static void can_move(gamecore_t *gc, player_t *player, sfVector2f move, float cam)
+{
+    float side_x[2] = {(float)((cam >= 180) ? -1 : 1), 0};
+    float side_y[2] = {0, (float)((cam < 90 || cam >= 270) ? -1 : 1)};
+    float point_x[2] = {0};
+    float point_y[2] = {0};
+    float dist = sqrtf(powf((player->x + move.x) - player->x, 2) + powf((player->y + move.y) - player->y, 2));
+    
+    point_x[0] = (cam >= 180) ? floorf(player->x) : floorf(player->x) + 1;
+    point_x[1] = tanf((cam >= 180) ? fabsf(cam - 270) * (M_PI / 180.0)
+    : fabsf(cam - 90) * (M_PI / 180.0)) * fabsf(point_x[0] - player->x)
+    * (float)((cam < 90 || cam >= 270) ? -1 : 1) + player->y;
+    point_y[1] = (cam < 90 || cam >= 270) ? floorf(player->y) : floorf(player->y) + 1;
+    point_y[0] = fabsf(point_y[1] - player->y) / tanf((cam >= 180)
+    ? fabsf(cam - 270) * (M_PI / 180.0)
+    : fabsf(cam - 90) * (M_PI / 180.0)) * (float)((cam >= 180) ? -1 : 1) + player->x;
+    side_x[1] = tanf((cam >= 180) ? fabsf(cam - 270) * (M_PI / 180.0)
+    : fabsf(cam - 90) * (M_PI / 180.0))
+    * (float)((cam < 90 || cam >= 270) ? -1 : 1);
+    side_y[0] = (float)((cam >= 180) ? -1 : 1) / tanf((cam >= 180)
+    ? fabsf(cam - 270) * (M_PI / 180.0) : fabsf(cam - 90) * (M_PI / 180.0));
+    while (1) {
+        if (dist < sqrtf(powf(point_x[0] - player->x, 2) + powf(point_x[1] - player->y, 2))
+        && dist < sqrtf(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
+            player->x += move.x;
+            player->y += move.y;
+            break;
+        }
+        if (!in_map((int)floorf(point_x[0] - 1), (int)point_x[1], gc) && !in_map((int)floorf(point_x[0]), (int)point_x[1], gc)
+        && !in_map((int)floorf(point_y[0]), (int)point_y[1] - 1, gc) && !in_map((int)floorf(point_y[0]), (int)point_y[1], gc)) {
+            break;
+        }
+        if (sqrtf(powf(point_x[0] - player->x, 2) + powf(point_x[1] - player->y, 2))
+        < sqrtf(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
+            if ((in_map((int)(point_x[0] - 1), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0] - 1])
+            || (in_map((int)(point_x[0]), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0]])) {
+                break;
+            }
+            point_x[0] += side_x[0];
+            point_x[1] += side_x[1];
+        } else {
+            if ((in_map((int)floorf(point_y[0]), (int)point_y[1] - 1, gc) && gc->map[(int)point_y[1] - 1][(int)floorf(point_y[0])])
+            || (in_map((int)floorf(point_y[0]), (int)point_y[1], gc) && gc->map[(int)point_y[1]][(int)floorf(point_y[0])])) {
+                break;
+            }
+            point_y[0] += side_y[0];
+            point_y[1] += side_y[1];
+        }
+    }
+}
+
 static void check_key(gamecore_t *gc, player_t *player)
 {
     float sin_h = sinf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
@@ -14,6 +65,7 @@ static void check_key(gamecore_t *gc, player_t *player)
     float cos_h = cosf(player->cam_x * (M_PI / 180.0)) * move_speed * gc->delay;
     float cos_v = cosf((player->cam_x + 90) * (M_PI / 180.0)) * move_speed * gc->delay;
     sfVector2f move = {0, 0};
+    float cam = player->cam_x;
     
     if (gc->key[sfKeyEscape] || !gc->focus) {
         gc->state = PAUSE;
@@ -35,9 +87,18 @@ static void check_key(gamecore_t *gc, player_t *player)
         move.x += sin_v;
         move.y -= cos_v;
     }
-    if (in_map((int)floorf(player->x + move.x), (int)floorf(player->y + move.y), gc) && gc->map[(int)floorf(player->y + move.y)][(int)floorf(player->x + move.x)] == 0) {
-        player->x += move.x;
-        player->y += move.y;
+    if (move.x || move.y) {
+        if ((gc->key[sfKeyQ] || gc->key[sfKeyLeft]) != (gc->key[sfKeyD] || gc->key[sfKeyRight])) {
+            cam += 90 - (gc->key[sfKeyQ] || gc->key[sfKeyLeft]) * 180;
+            cam += ((gc->key[sfKeyQ] || gc->key[sfKeyLeft]) && (gc->key[sfKeyS] || gc->key[sfKeyDown])) ? -45 : 0;
+            cam += ((gc->key[sfKeyD] || gc->key[sfKeyRight]) && (gc->key[sfKeyS] || gc->key[sfKeyDown])) ? 45 : 0;
+            cam += ((gc->key[sfKeyQ] || gc->key[sfKeyLeft]) && (gc->key[sfKeyZ] || gc->key[sfKeyUp])) ? 45 : 0;
+            cam += ((gc->key[sfKeyD] || gc->key[sfKeyRight]) && (gc->key[sfKeyZ] || gc->key[sfKeyUp])) ? -45 : 0;
+        } else
+            cam += (gc->key[sfKeyS] || gc->key[sfKeyDown]) * 180;
+        cam = fmodf(cam, 360);
+        for (; cam < 0; cam += 360);
+        can_move(gc, player, move, cam);
     }
     // printf("%f et %f et %f\n", player->x, player->y, player->cam_x);
 }
@@ -56,6 +117,6 @@ static void check_cam(gamecore_t *gc, player_t *player)
 
 void analyze_event_game(gamecore_t *gc, player_t *player)
 {
-    check_key(gc, player);
     check_cam(gc, player);
+    check_key(gc, player);
 }
