@@ -7,11 +7,15 @@
 
 NAME = Wolf3D
 
-SRC = src/main.c
+SRC = src/main.c \
+	  src/game/analyze_event.c \
+	  src/game/display.c \
+	  src/pause/analyze_event.c \
+	  src/pause/display.c \
 
 OBJ = $(SRC:.c=.o)
 
-CFLAGS = -lcsfml-graphics -lcsfml-window -lcsfml-system -lm
+CFLAGS = -I./include -lcsfml-graphics -lcsfml-window -lcsfml-system -lm
 
 all: $(NAME)
 
