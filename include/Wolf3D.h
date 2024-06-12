@@ -60,6 +60,7 @@ typedef struct gamecore_s {
     char focus;
     short fps;
     short ups;
+    float render_distance;
 } gamecore_t;
 
 void analyze_event_game(gamecore_t *gc, player_t *player);

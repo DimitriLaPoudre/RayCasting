@@ -67,7 +67,7 @@ int gameloop(short **map, sfVector2u map_size)
     gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose | sfResize, NULL),
     {800, 600}, 0, 60, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0},
     {sfRed, (sfColor){200, 0, 0, 255}, sfBlue,  (sfColor){0, 0, 200, 255}, sfGreen,  (sfColor){0, 200, 0, 255}},
-    {sfTexture_createFromFile("asset/wall.png", NULL), sfSprite_create()}, GAME, 1, 60, 60};
+    {sfTexture_createFromFile("asset/wall.png", NULL), sfSprite_create()}, GAME, 1, 60, 60, 0};
 
     sfRenderWindow_setPosition(gc.window,
     (sfVector2i){(sfVideoMode_getDesktopMode().width - gc.window_size.x) / 2,
