@@ -6,6 +6,14 @@
 */
 
 #include "Wolf3D.h"
+#define movex (fabsf(player->x + move.x - point_x[0]) < wall_distance \
+              && ((in_map((int)(point_x[0] - 1), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0] - 1]) \
+              || (in_map((int)(point_x[0]), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0]]))) \
+              ? point_x[0] + wall_distance - wall_distance * 2 * (player->x - point_x[0] < 0) : player->x + move.x
+#define movey (fabsf(player->y + move.y - point_y[1]) < wall_distance \
+              && ((in_map((int)floorf(point_y[0]), (int)point_y[1] - 1, gc) && gc->map[(int)point_y[1] - 1][(int)floorf(point_y[0])]) \
+              || (in_map((int)floorf(point_y[0]), (int)point_y[1], gc) && gc->map[(int)point_y[1]][(int)floorf(point_y[0])]))) \
+              ? point_y[1] + wall_distance - wall_distance * 2 * (player->y - point_y[1] < 0) : player->y + move.y
 
 static void can_move(gamecore_t *gc, player_t *player, sfVector2f move, float cam)
 {
@@ -31,10 +39,10 @@ static void can_move(gamecore_t *gc, player_t *player, sfVector2f move, float ca
     while (1) {
         if (dist < sqrtf(powf(point_x[0] - player->x, 2) + powf(point_x[1] - player->y, 2))
         && dist < sqrtf(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
-            if ((in_map((int)floorf(player->x + move.x), (int)floorf(player->y + move.y), gc)
-            && gc->map[(int)floorf(player->y + move.y)][(int)floorf(player->x + move.x)]) == 0) {
-                player->x += move.x;
-                player->y += move.y;
+            if ((in_map((int)floorf(movex), (int)floorf(movey), gc)
+            && gc->map[(int)floorf(movey)][(int)floorf(movex)]) == 0) {
+                player->x = movex;
+                player->y = movey;
             }
             break;
         }
@@ -46,7 +54,7 @@ static void can_move(gamecore_t *gc, player_t *player, sfVector2f move, float ca
         < sqrtf(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
             if ((in_map((int)(point_x[0] - 1), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0] - 1])
             || (in_map((int)(point_x[0]), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0]])) {
-                player->x = (point_x[0] <= player->x) ? point_x[0] + (float)0.00001: point_x[0] - (float)0.00001;
+                player->x = (point_x[0] <= player->x) ? point_x[0] + (float)wall_distance: point_x[0] - (float)wall_distance;
                 player->y = point_x[1];
                 break;
             }
@@ -55,7 +63,7 @@ static void can_move(gamecore_t *gc, player_t *player, sfVector2f move, float ca
         } else {
             if ((in_map((int)floorf(point_y[0]), (int)point_y[1] - 1, gc) && gc->map[(int)point_y[1] - 1][(int)floorf(point_y[0])])
             || (in_map((int)floorf(point_y[0]), (int)point_y[1], gc) && gc->map[(int)point_y[1]][(int)floorf(point_y[0])])) {
-                player->y = (point_y[1] <= player->y) ? point_y[1] + (float)0.00001 : point_y[1] - (float)0.00001;
+                player->y = (point_y[1] <= player->y) ? point_y[1] + (float)wall_distance : point_y[1] - (float)wall_distance;
                 player->x = point_y[0];
                 break;
             }
@@ -107,9 +115,6 @@ static void check_key(gamecore_t *gc, player_t *player)
         for (; cam < 0; cam += 360);
         can_move(gc, player, move, cam);
     }
-    printf("%f et %f et %f\n", player->x, player->y, player->cam_x); 
-    if ((in_map((int)floorf(player->x), (int)floorf(player->y), gc) && gc->map[(int)floorf(player->y)][(int)floorf(player->x)]))
-        exit(0);
 }
 
 static void check_cam(gamecore_t *gc, player_t *player)

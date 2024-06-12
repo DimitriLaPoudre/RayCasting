@@ -19,6 +19,7 @@
     #include <SFML/System.h>
 
     #define move_speed (float)2.5
+    #define wall_distance (float)0.02
     #define mouse_sensibility (sfVector2f){(float)3 / (float)10, (float)3 / (float)10}
     #define in_map(px, py, gc) (px >= 0 && px < gc->map_size.x && py >= 0 && py < gc->map_size.y)
 
