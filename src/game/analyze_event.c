@@ -31,8 +31,11 @@ static void can_move(gamecore_t *gc, player_t *player, sfVector2f move, float ca
     while (1) {
         if (dist < sqrtf(powf(point_x[0] - player->x, 2) + powf(point_x[1] - player->y, 2))
         && dist < sqrtf(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
-            player->x += move.x;
-            player->y += move.y;
+            if ((in_map((int)floorf(player->x + move.x), (int)floorf(player->y + move.y), gc)
+            && gc->map[(int)floorf(player->y + move.y)][(int)floorf(player->x + move.x)]) == 0) {
+                player->x += move.x;
+                player->y += move.y;
+            }
             break;
         }
         if (!in_map((int)floorf(point_x[0] - 1), (int)point_x[1], gc) && !in_map((int)floorf(point_x[0]), (int)point_x[1], gc)
@@ -43,6 +46,8 @@ static void can_move(gamecore_t *gc, player_t *player, sfVector2f move, float ca
         < sqrtf(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
             if ((in_map((int)(point_x[0] - 1), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0] - 1])
             || (in_map((int)(point_x[0]), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0]])) {
+                player->x = (point_x[0] <= player->x) ? point_x[0] + (float)0.00001: point_x[0] - (float)0.00001;
+                player->y = point_x[1];
                 break;
             }
             point_x[0] += side_x[0];
@@ -50,6 +55,8 @@ static void can_move(gamecore_t *gc, player_t *player, sfVector2f move, float ca
         } else {
             if ((in_map((int)floorf(point_y[0]), (int)point_y[1] - 1, gc) && gc->map[(int)point_y[1] - 1][(int)floorf(point_y[0])])
             || (in_map((int)floorf(point_y[0]), (int)point_y[1], gc) && gc->map[(int)point_y[1]][(int)floorf(point_y[0])])) {
+                player->y = (point_y[1] <= player->y) ? point_y[1] + (float)0.00001 : point_y[1] - (float)0.00001;
+                player->x = point_y[0];
                 break;
             }
             point_y[0] += side_y[0];
@@ -100,7 +107,9 @@ static void check_key(gamecore_t *gc, player_t *player)
         for (; cam < 0; cam += 360);
         can_move(gc, player, move, cam);
     }
-    // printf("%f et %f et %f\n", player->x, player->y, player->cam_x);
+    printf("%f et %f et %f\n", player->x, player->y, player->cam_x); 
+    if ((in_map((int)floorf(player->x), (int)floorf(player->y), gc) && gc->map[(int)floorf(player->y)][(int)floorf(player->x)]))
+        exit(0);
 }
 
 static void check_cam(gamecore_t *gc, player_t *player)
