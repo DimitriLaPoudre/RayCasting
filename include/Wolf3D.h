@@ -19,7 +19,9 @@
     #include <SFML/System.h>
 
     #define move_speed (float)2.5
-    #define wall_distance (float)0.02
+    #define wall_distance (float)0.03
+    #define FOV 60
+    #define render_dist 0
     #define mouse_sensibility (sfVector2f){(float)3 / (float)10, (float)3 / (float)10}
     #define in_map(px, py, gc) (px >= 0 && px < gc->map_size.x && py >= 0 && py < gc->map_size.y)
 
@@ -61,6 +63,8 @@ typedef struct gamecore_s {
     short fps;
     short ups;
     float render_distance;
+    sfColor *framebuffer;
+    sprite_t floor;
 } gamecore_t;
 
 void analyze_event_game(gamecore_t *gc, player_t *player);

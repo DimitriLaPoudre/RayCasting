@@ -26,11 +26,6 @@ void analyze_event(gamecore_t *gc, player_t *player)
             gc->mouse_pos = (sfVector2i){gc->event.mouseMove.x, gc->event.mouseMove.y};
             continue;
         }
-        if (gc->event.type == sfEvtResized) {
-            gc->window_size.x = gc->event.size.width;
-            gc->window_size.y = gc->event.size.height;
-            continue;
-        }
         if (gc->event.type == sfEvtGainedFocus || gc->event.type == sfEvtLostFocus)
             gc->focus = gc->event.type - 2;
     }
@@ -64,11 +59,14 @@ void display(gamecore_t *gc, player_t *player)
 int gameloop(short **map, sfVector2u map_size)
 {
     player_t player = {1.2, 1.2, 135, 0};
-    gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose | sfResize, NULL),
-    {800, 600}, 0, 60, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0},
+    gamecore_t gc = {sfRenderWindow_create((sfVideoMode){800, 600, 32}, "Wolf3D", sfClose, NULL),
+    {800, 600}, 0, FOV, map, map_size, {0}, {0}, sfRectangleShape_create(), sfClock_create(), 0, {0},
     {sfRed, (sfColor){200, 0, 0, 255}, sfBlue,  (sfColor){0, 0, 200, 255}, sfGreen,  (sfColor){0, 200, 0, 255}},
-    {sfTexture_createFromFile("asset/wall.png", NULL), sfSprite_create()}, GAME, 1, 60, 60, 0};
+    {sfTexture_createFromFile("asset/wall.png", NULL), sfSprite_create()}, GAME, 1, 60, 60, render_dist,
+    NULL, {sfTexture_create(gc.window_size.x, gc.window_size.y), sfSprite_create()}};
 
+    gc.framebuffer = malloc(sizeof(sfColor) * gc.window_size.x * gc.window_size.y);
+    sfSprite_setTexture(gc.floor.sprite, gc.floor.texture, sfTrue);
     sfRenderWindow_setPosition(gc.window,
     (sfVector2i){(sfVideoMode_getDesktopMode().width - gc.window_size.x) / 2,
     (sfVideoMode_getDesktopMode().height - 80 - gc.window_size.y) / 2});

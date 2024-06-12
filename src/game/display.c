@@ -7,7 +7,7 @@
 
 #include "Wolf3D.h"
 
-static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc)
+static float place_wall(float point[2], int ray, player_t *player, gamecore_t *gc)
 {
     float dist = sqrtf(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2));
     short type = 0;
@@ -35,12 +35,13 @@ static void place_wall(float point[2], int ray, player_t *player, gamecore_t *gc
     ray = fabsf(ray) - 1;
     sfSprite_setScale(gc->wall.sprite, (sfVector2f){1, (gc->window_size.y / dist) / (float)64});
     sfSprite_setPosition(gc->wall.sprite, (sfVector2f){ray, -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2});
+    sfSprite_setColor(gc->wall.sprite, sfWhite);
     if (gc->render_distance > 0)
         sfSprite_setColor(gc->wall.sprite, (sfColor){255, 255, 255,
         (gc->render_distance / sqrtf(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2)) > 255)
         ? 255 : gc->render_distance / sqrtf(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2))});
-    sfSprite_setColor(gc->wall.sprite, sfWhite);
     sfRenderWindow_drawSprite(gc->window, gc->wall.sprite, NULL);
+    return dist;
 }
 
 static void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
@@ -49,6 +50,7 @@ static void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
     float side_y[2] = {0, (float)((cam[0] < 90 || cam[0] >= 270) ? -1 : 1)};
     float point_x[2] = {0};
     float point_y[2] = {0};
+    float dist = 0;
     
     point_x[0] = (cam[0] >= 180) ? floorf(player->x) : floorf(player->x) + 1;
     point_x[1] = tanf((cam[0] >= 180) ? fabsf(cam[0] - 270) * (M_PI / 180.0)
@@ -71,7 +73,7 @@ static void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
         < sqrtf(powf(point_y[0] - player->x, 2) + powf(point_y[1] - player->y, 2))) {
             if ((in_map((int)(point_x[0] - 1), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0] - 1])
             || (in_map((int)(point_x[0]), (int)floorf(point_x[1]), gc) && gc->map[(int)floorf(point_x[1])][(int)point_x[0]])) {
-                place_wall(point_x, ray + 1, player, gc);
+                dist = place_wall(point_x, ray + 1, player, gc);
                 break;
             }
             point_x[0] += side_x[0];
@@ -79,28 +81,32 @@ static void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
         } else {
             if ((in_map((int)floorf(point_y[0]), (int)point_y[1] - 1, gc) && gc->map[(int)point_y[1] - 1][(int)floorf(point_y[0])])
             || (in_map((int)floorf(point_y[0]), (int)point_y[1], gc) && gc->map[(int)point_y[1]][(int)floorf(point_y[0])])) {
-                place_wall(point_y, -(ray + 1), player, gc);
+                dist = place_wall(point_y, -(ray + 1), player, gc);
                 break;
             }
             point_y[0] += side_y[0];
             point_y[1] += side_y[1];
         }
     }
+    for (float i = -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2
+    ; i > 0; i--) {
+        gc->framebuffer[ray + (int)floorf(i) * (int)gc->window_size.x] = (sfColor){50, 50, 50, 255};
+    }
+    for (float i = -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2
+    + (gc->window_size.y / dist); i < gc->window_size.y; i++) {
+        gc->framebuffer[ray + (int)floorf(i) * (int)gc->window_size.x] = (sfColor){100, 100, 100, 255};
+    }
 }
 
 void display_game(gamecore_t *gc, player_t *player)
 {
     sfRenderWindow_clear(gc->window, sfBlack);
-    // sfRectangleShape_setSize(gc->rect, (sfVector2f){gc->window_size.x, gc->window_size.y * 2});
-    // sfRectangleShape_setFillColor(gc->rect, (sfColor){50, 50, 50, 255});
-    // sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, 0});
-    // sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
-    // sfRectangleShape_setFillColor(gc->rect, (sfColor){100, 100, 100, 255});
-    // sfRectangleShape_setPosition(gc->rect, (sfVector2f){0, -player->cam_y * (gc->window_size.y / (float)90) + gc->window_size.y / (float)2});
-    // sfRenderWindow_drawRectangleShape(gc->window, gc->rect, NULL);
     for (float i = 0; i < gc->fov; i += gc->fov / gc->window_size.x) {
         display_ray((float [2]){fmod(player->cam_x - gc->fov / 2 + i + 360, 360), player->cam_y},
         roundf(i * (gc->window_size.x / gc->fov)), player, gc);
     }
+    sfTexture_updateFromPixels(gc->floor.texture, (const sfUint8 *)gc->framebuffer, gc->window_size.x, gc->window_size.y, 0, 0);
+    sfRenderWindow_drawSprite(gc->window, gc->floor.sprite, NULL);
+    memset(gc->framebuffer, 0, 4 * gc->window_size.x * gc->window_size.y);
     sfRenderWindow_display(gc->window);
 }
