@@ -89,13 +89,15 @@ static void display_ray(float cam[2], int ray, player_t *player, gamecore_t *gc)
         }
     }
     for (float i = -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2
-    ; i > 0; i--) {
-        gc->framebuffer[ray + (int)floorf(i) * (int)gc->window_size.x] = (sfColor){50, 50, 50, 255};
-    }
+    ; i > 0; i--)
+        if (i < gc->window_size.y) {
+            gc->framebuffer[ray + (int)floorf(i) * (int)gc->window_size.x] = (sfColor){50, 50, 50, 255};
+        }
     for (float i = -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2
-    + (gc->window_size.y / dist); i < gc->window_size.y; i++) {
-        gc->framebuffer[ray + (int)floorf(i) * (int)gc->window_size.x] = (sfColor){100, 100, 100, 255};
-    }
+    + (gc->window_size.y / dist); i < gc->window_size.y; i++)
+        if (i >= 0) {
+            gc->framebuffer[ray + (int)floorf(i) * (int)gc->window_size.x] = (sfColor){100, 100, 100, 255};
+        }
 }
 
 void display_game(gamecore_t *gc, player_t *player)
