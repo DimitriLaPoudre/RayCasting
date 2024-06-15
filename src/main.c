@@ -72,7 +72,8 @@ int gameloop(short **map, sfVector2u map_size)
     (sfVideoMode_getDesktopMode().height - 80 - gc.window_size.y) / 2});
     sfSprite_setTexture(gc.wall.sprite, gc.wall.texture, sfTrue);
     sfRenderWindow_setMouseCursorVisible(gc.window, sfFalse);
-    gc.mouse_pos = sfMouse_getPositionRenderWindow(gc.window);
+    gc.mouse_pos = (sfVector2i){gc.window_size.x / 2, gc.window_size.y / 2};
+    sfMouse_setPositionRenderWindow(gc.mouse_pos, gc.window);
     while (sfRenderWindow_isOpen(gc.window)) {
         gc.delay = sfClock_restart(gc.clock).microseconds / 1000000.0;
         analyze_event(&gc, &player);

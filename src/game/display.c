@@ -35,11 +35,9 @@ static float place_wall(float point[2], int ray, player_t *player, gamecore_t *g
     ray = fabsf(ray) - 1;
     sfSprite_setScale(gc->wall.sprite, (sfVector2f){1, (gc->window_size.y / dist) / (float)64});
     sfSprite_setPosition(gc->wall.sprite, (sfVector2f){ray, -player->cam_y * (gc->window_size.y / (float)90) + (gc->window_size.y - (gc->window_size.y / dist)) / (float)2});
-    sfSprite_setColor(gc->wall.sprite, sfWhite);
-    if (gc->render_distance > 0)
-        sfSprite_setColor(gc->wall.sprite, (sfColor){255, 255, 255,
-        (gc->render_distance / sqrtf(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2)) > 255)
-        ? 255 : gc->render_distance / sqrtf(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2))});
+    sfSprite_setColor(gc->wall.sprite, (gc->render_distance <= 0) ? sfWhite : (sfColor){255, 255, 255,
+    (gc->render_distance / sqrtf(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2)) > 255)
+    ? 255 : gc->render_distance / sqrtf(powf(point[0] - player->x, 2) + powf(point[1] - player->y, 2))});
     sfRenderWindow_drawSprite(gc->window, gc->wall.sprite, NULL);
     return dist;
 }
